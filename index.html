@@ -117,10 +117,13 @@
                 cell.addEventListener("click", (e) => {
                     const x = parseInt(cell.dataset.x);
                     const y = parseInt(cell.dataset.y);
+                    console.log(`Cell clicked at (${x}, ${y})`);  // Отладка: любой клик
                     if (field[x][y] === "G1") {
-                        console.log(`Clicked Tool Chest at (${x}, ${y})`);
-                        tg.sendData(JSON.stringify({ action: "generate", x, y }));
-                        // Временное добавление для теста (удалим позже)
+                        console.log(`Generator clicked at (${x}, ${y})`);
+                        const data = { action: "generate", x: x, y: y };
+                        console.log("Sending data:", data);
+                        tg.sendData(JSON.stringify(data));
+                        // Тест: добавляем предмет локально
                         for (let dx = -1; dx <= 1; dx++) {
                             for (let dy = -1; dy <= 1; dy++) {
                                 const nx = x + dx;
@@ -129,11 +132,13 @@
                                     field[nx][ny] = "R1";
                                     if (generatorCount < 30) generatorCount++;
                                     else if (cooldownEnd === 0) cooldownEnd = Date.now() / 1000 + 1800;
+                                    console.log(`Added R1 at (${nx}, ${ny}) locally`);
                                     renderField();
                                     return;
                                 }
                             }
                         }
+                        console.log("No free space locally");
                     }
                 });
 
