@@ -29,16 +29,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 20px;
             cursor: pointer;
             user-select: none;
             position: relative;
         }
         .cell.drag-over {
             border-color: #00ff00;
-        }
-        .cell img {
-            width: 40px;
-            height: 40px;
         }
         .timer {
             position: absolute;
@@ -77,14 +74,14 @@
         let cooldownEnd = 0;
         let draggedItem = null;
 
-        // Пути к иконкам (замени на свои URL после загрузки)
+        // Временные текстовые метки вместо иконок
         const items = {
-            "G1": { name: "Tool Chest", icon: "tool_chest.png" },
-            "R1": { name: "Wrench", icon: "wrench.png" },
-            "R2": { name: "Hammer", icon: "hammer.png" },
-            "R3": { name: "Shears", icon: "shears.png" },
-            "R4": { name: "Axe", icon: "axe.png" },
-            "R5": { name: "Garden Shed", icon: "garden_shed.png" }
+            "G1": { name: "Tool Chest", icon: "🧰" },  // Замени на "tool_chest.png"
+            "R1": { name: "Wrench", icon: "🔧" },      // Замени на "wrench.png"
+            "R2": { name: "Hammer", icon: "🔨" },      // Замени на "hammer.png"
+            "R3": { name: "Shears", icon: "✂️" },      // Замени на "shears.png"
+            "R4": { name: "Axe", icon: "🪓" },         // Замени на "axe.png"
+            "R5": { name: "Garden Shed", icon: "🏡" }  // Замени на "garden_shed.png"
         };
 
         // Отрисовка поля
@@ -98,9 +95,7 @@
                     cell.dataset.x = x;
                     cell.dataset.y = y;
                     if (field[x][y]) {
-                        const img = document.createElement("img");
-                        img.src = items[field[x][y]].icon;
-                        cell.appendChild(img);
+                        cell.textContent = items[field[x][y]].icon;  // Пока текст, позже <img>
                         if (field[x][y] === "G1" && cooldownEnd > Date.now() / 1000) {
                             const timer = document.createElement("span");
                             timer.className = "timer";
@@ -117,8 +112,7 @@
             addEventListeners();
         }
 
-        // Обновление таймера
-        setInterval(renderField, 1000);  // Обновляем каждую секунду
+        setInterval(renderField, 1000);
 
         // Добавление обработчиков
         function addEventListeners() {
@@ -128,6 +122,7 @@
                     const x = parseInt(cell.dataset.x);
                     const y = parseInt(cell.dataset.y);
                     if (field[x][y] === "G1") {
+                        console.log(`Clicked Tool Chest at (${x}, ${y})`);  // Отладка
                         tg.sendData(JSON.stringify({ action: "generate", x, y }));
                         if (generatorCount < 30) generatorCount++;
                         else if (cooldownEnd === 0) cooldownEnd = Date.now() / 1000 + 1800;
