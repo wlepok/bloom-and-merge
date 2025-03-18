@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bloom & Merge</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .inventory {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .item {
+            width: 100px;
+            height: 100px;
+            background-color: #fff;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: move;
+            user-select: none;
+        }
+        .item.drag-over {
+            border-color: #00ff00;
+        }
+        #score {
+            font-size: 20px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bloom & Merge</h1>
+    <div class="inventory" id="inventory"></div>
+    <div id="score">Score: 0</div>
+
+    <script>
+        // Инициализация Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // Начальные данные игрока
+        let inventory = [1, 1, 1]; // 🌱 Tiny Seed x3
+        let score = 0;
+        const items = {
+            1: "🌱 Tiny Seed",
+            2: "🌼 Bud",
+            3: "🌸 Bloom",
+            4: "🌳 Flower Tree",
+            5: "🏡 Blossom Haven"
+        };
+
+        // Отрисовка инвентаря
+        function renderInventory() {
+            const inventoryDiv = document.getElementById("inventory");
+            inventoryDiv.innerHTML = "";
+            inventory.forEach((item, index) => {
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "item";
+                itemDiv.textContent = items[item];
+                itemDiv.dataset.index = index;
+                itemDiv.draggable = true;
+                inventoryDiv.appendChild(itemDiv);
+            });
+            document.getElementById("score").textContent = `Score: ${score}`;
+            addDragAndDropListeners();
+        }
+
+        // Добавление обработчиков drag-and-drop
+        function addDragAndDropListeners() {
+            const items = document.querySelectorAll(".item");
+            items.forEach(item => {
+                item.addEventListener("dragstart", (e) => {
+                    e.dataTransfer.setData("text/plain", item.dataset.index);
+                });
+
+                item.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                    item.classList.add("drag-over");
+                });
+
+                item.addEventListener("dragleave", () => {
+                    item.classList.remove("drag-over");
+                });
+
+                item.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    item.classList.remove("drag-over");
+                    const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
+                    const toIndex = parseInt(item.dataset.index);
+                    mergeItems(fromIndex, toIndex);
+                });
+            });
+        }
+
+        // Логика объединения предметов
+        function mergeItems(fromIndex, toIndex) {
+            if (fromIndex === toIndex || fromIndex >= inventory.length || toIndex >= inventory.length) {
+                return;
+            }
+
+            const item1 = inventory[fromIndex];
+            const item2 = inventory[toIndex];
+
+            if (item1 !== item2) {
+                alert("You can only merge identical items!");
+                return;
+            }
+
+            const newItem = item1 < 5 ? item1 + 1 : 5;
+            inventory.splice(Math.max(fromIndex, toIndex), 1);
+            inventory.splice(Math.min(fromIndex, toIndex), 1);
+            inventory.push(newItem);
+            score += newItem * 10;
+
+            // Отправка данных боту
+            tg.sendData(JSON.stringify({
+                action: "merge",
+                index1: fromIndex,
+                index2: toIndex
+            }));
+
+            renderInventory();
+        }
+
+        // Инициализация игры
+        renderInventory();
+
+        // Закрытие Web App
+        tg.MainButton.setText("Close").show().onClick(() => {
+            tg.close();
+        });
+    </script>
+</body>
+</html>
