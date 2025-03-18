@@ -81,15 +81,13 @@
             "R5": { name: "Garden Shed", icon: "🏡" }
         };
 
-        // Подключение к вебсокету
-        const userId = tg.initDataUnsafe.user.id;  // Получаем user_id из initData
+        const userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "test_user";
         const ws = new WebSocket(`ws://localhost:8000/ws/${userId}`);
         ws.onmessage = (event) => {
-            field = JSON.parse(event.data);  // Получаем обновленное поле
-            renderField();  // Обновляем отображение
+            field = JSON.parse(event.data);
+            renderField();
         };
 
-        // Функция отрисовки поля
         function renderField() {
             const fieldDiv = document.getElementById("field");
             fieldDiv.innerHTML = "";
@@ -119,7 +117,6 @@
 
         setInterval(renderField, 1000);
 
-        // Добавление обработчиков событий
         function addEventListeners() {
             const cells = document.querySelectorAll(".cell");
             cells.forEach(cell => {
@@ -181,7 +178,6 @@
             });
         }
 
-        // Обработка слияния
         function mergeItems(x1, y1, x2, y2) {
             if (x1 === x2 && y1 === y2) return;
             const item1 = field[x1][y1];
@@ -192,7 +188,6 @@
             }
         }
 
-        // Начальная отрисовка
         renderField();
         tg.MainButton.setText("Close").show().onClick(() => tg.close());
     </script>
