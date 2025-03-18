@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bloom & Merge</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .field {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            gap: 2px;
+            background-color: #ccc;
+            padding: 5px;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #fff;
+            border: 1px solid #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        .cell.drag-over {
+            border-color: #00ff00;
+        }
+        .timer {
+            position: absolute;
+            font-size: 12px;
+            color: red;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 2px;
+            border-radius: 3px;
+        }
+        #score {
+            font-size: 20px;
+            margin-top: 20px;
+        }
+        #generator-status {
+            font-size: 16px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bloom & Merge</h1>
+    <div class="field" id="field"></div>
+    <div id="score">Score: 0</div>
+    <div id="generator-status">Tools generated: 0/30</div>
+    <button id="refresh">Refresh</button>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        let field = Array(8).fill().map(() => Array(8).fill(null));
+        field[0][0] = "G1";
+        let score = 0;
+        let generatorCount = 0;
+        let cooldownEnd = 0;
+        let draggedItem = null;
+
+        const items = {
+            "G1": { name: "Tool Chest", icon: "🧰" },
+            "R1": { name: "Wrench", icon: "🔧" },
+            "R2": { name: "Hammer", icon: "🔨" },
+            "R3": { name: "Shears", icon: "✂️" },
+            "R4": { name: "Axe", icon: "🪓" },
+            "R5": { name: "Garden Shed", icon: "🏡" }
+        };
+
+        function renderField() {
+            const fieldDiv = document.getElementById("field");
+            fieldDiv.innerHTML = "";
+            for (let x = 0; x < 8; x++) {
+                for (let y = 0; y < 8; y++) {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    if (field[x][y]) {
+                        cell.textContent = items[field[x][y]].icon;
+                        if (field[x][y] === "G1" && cooldownEnd > Date.now() / 1000) {
+                            const timer = document.createElement("span");
+                            timer.className = "timer";
+                            const remaining = Math.max(0, Math.ceil(cooldownEnd - Date.now() / 1000));
+                            timer.textContent = `${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`;
+                            cell.appendChild(timer);
+                        }
+                    }
+                    fieldDiv.appendChild(cell);
+                }
+            }
+            document.getElementById("score").textContent = `Score: ${score}`;
+            document.getElementById("generator-status").textContent = `Tools generated: ${generatorCount}/30`;
+            addEventListeners();
+        }
+
+        setInterval(renderField, 1000);
+
+        function addEventListeners() {
+            const cells = document.querySelectorAll(".cell");
+            cells.forEach(cell => {
+                cell.addEventListener("click", (e) => {
+                    const x = parseInt(cell.dataset.x);
+                    const y = parseInt(cell.dataset.y);
+                    console.log(`Cell clicked at (${x}, ${y})`);
+                    if (field[x][y] === "G1") {
+                        console.log(`Generator clicked at (${x}, ${y})`);
+                        const data = { action: "generate", x: x, y: y };
+                        console.log("Sending data:", data);
+                        tg.sendData(JSON.stringify(data));
+                    }
+                });
+
+                cell.draggable = field[cell.dataset.x][cell.dataset.y]?.startsWith("R");
+                cell.addEventListener("dragstart", (e) => {
+                    if (!cell.draggable) return;
+                    draggedItem = { x: parseInt(cell.dataset.x), y: parseInt(cell.dataset.y) };
+                    e.dataTransfer.setData("text/plain", `${draggedItem.x},${draggedItem.y}`);
+                });
+                cell.addEventListener("dragover", (e) => {
+                    if (cell.draggable) e.preventDefault();
+                    cell.classList.add("drag-over");
+                });
+                cell.addEventListener("dragleave", () => cell.classList.remove("drag-over"));
+                cell.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    cell.classList.remove("drag-over");
+                    const [x1, y1] = e.dataTransfer.getData("text/plain").split(",").map(Number);
+                    const x2 = parseInt(cell.dataset.x);
+                    const y2 = parseInt(cell.dataset.y);
+                    mergeItems(x1, y1, x2, y2);
+                });
+
+                cell.addEventListener("touchstart", (e) => {
+                    if (!cell.draggable) return;
+                    draggedItem = { x: parseInt(cell.dataset.x), y: parseInt(cell.dataset.y) };
+                    e.preventDefault();
+                });
+                cell.addEventListener("touchmove", (e) => {
+                    if (!draggedItem) return;
+                    const touch = e.touches[0];
+                    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                    cells.forEach(c => c.classList.remove("drag-over"));
+                    if (target.classList.contains("cell") && target.draggable) {
+                        target.classList.add("drag-over");
+                    }
+                });
+                cell.addEventListener("touchend", (e) => {
+                    if (!draggedItem) return;
+                    const touch = e.changedTouches[0];
+                    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                    cells.forEach(c => c.classList.remove("drag-over"));
+                    if (target.classList.contains("cell")) {
+                        const x2 = parseInt(target.dataset.x);
+                        const y2 = parseInt(target.dataset.y);
+                        mergeItems(draggedItem.x, draggedItem.y, x2, y2);
+                    }
+                    draggedItem = null;
+                });
+            });
+        }
+
+        function mergeItems(x1, y1, x2, y2) {
+            if (x1 === x2 && y1 === y2) return;
+            const item1 = field[x1][y1];
+            const item2 = field[x2][y2];
+            if (item1 && item2 && item1 === item2 && item1.startsWith("R")) {
+                const level = parseInt(item1[1]);
+                const newLevel = Math.min(level + 1, 5);
+                field[x1][y1] = `R${newLevel}`;
+                field[x2][y2] = null;
+                score += newLevel * 10;
+                tg.sendData(JSON.stringify({ action: "merge", x1, y1, x2, y2 }));
+            }
+            renderField();
+        }
+
+        renderField();
+        tg.MainButton.setText("Close").show().onClick(() => tg.close());
+        document.getElementById("refresh").addEventListener("click", () => {
+            renderField();
+        });
+    </script>
+</body>
+</html>
