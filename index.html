@@ -60,7 +60,6 @@
     <div class="field" id="field"></div>
     <div id="score">Score: 0</div>
     <div id="generator-status">Tools generated: 0/30</div>
-    <button id="refresh">Refresh</button>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -68,7 +67,6 @@
         tg.expand();
 
         let field = Array(8).fill().map(() => Array(8).fill(null));
-        field[0][0] = "G1";
         let score = 0;
         let generatorCount = 0;
         let cooldownEnd = 0;
@@ -83,6 +81,7 @@
             "R5": { name: "Garden Shed", icon: "🏡" }
         };
 
+        // Функция отрисовки поля
         function renderField() {
             const fieldDiv = document.getElementById("field");
             fieldDiv.innerHTML = "";
@@ -112,17 +111,15 @@
 
         setInterval(renderField, 1000);
 
+        // Добавление обработчиков событий
         function addEventListeners() {
             const cells = document.querySelectorAll(".cell");
             cells.forEach(cell => {
                 cell.addEventListener("click", (e) => {
                     const x = parseInt(cell.dataset.x);
                     const y = parseInt(cell.dataset.y);
-                    console.log(`Cell clicked at (${x}, ${y})`);
                     if (field[x][y] === "G1") {
-                        console.log(`Generator clicked at (${x}, ${y})`);
                         const data = { action: "generate", x: x, y: y };
-                        console.log("Sending data:", data);
                         tg.sendData(JSON.stringify(data));
                     }
                 });
@@ -176,26 +173,20 @@
             });
         }
 
+        // Обработка слияния
         function mergeItems(x1, y1, x2, y2) {
             if (x1 === x2 && y1 === y2) return;
             const item1 = field[x1][y1];
             const item2 = field[x2][y2];
             if (item1 && item2 && item1 === item2 && item1.startsWith("R")) {
-                const level = parseInt(item1[1]);
-                const newLevel = Math.min(level + 1, 5);
-                field[x1][y1] = `R${newLevel}`;
-                field[x2][y2] = null;
-                score += newLevel * 10;
-                tg.sendData(JSON.stringify({ action: "merge", x1, y1, x2, y2 }));
+                const data = { action: "merge", x1, y1, x2, y2 };
+                tg.sendData(JSON.stringify(data));
             }
-            renderField();
         }
 
+        // Начальная отрисовка
         renderField();
         tg.MainButton.setText("Close").show().onClick(() => tg.close());
-        document.getElementById("refresh").addEventListener("click", () => {
-            renderField();
-        });
     </script>
 </body>
 </html>
